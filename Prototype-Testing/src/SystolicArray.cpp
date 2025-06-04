@@ -9,8 +9,9 @@ const int N = 10;
 class SystolicArray {
     public:
         PE peGrid[N][N];
-
-        void multiply(const int16_t A[N][N], const int16_t B[N][N]){
+        int16_t output[N][N];
+        void multiply(const int16_t A[N][N]) {
+            int16_t psum[N][N] = {0};
             for (int t = 0; t <= 2 * N; ++t){
                 //cout << "t = " << t << '\n';
                 for(int i = N -1; i >= 0; --i){
@@ -25,35 +26,28 @@ class SystolicArray {
                         else
                             peGrid[i][j].a = 0;
 
-                        //arriba a abajo
-                        if ( i > 0)
-                            peGrid[i][j].b = peGrid[i - 1][j].b;
-                        else if (t - j >= 0 && t - j < N)
-                            //b viene de B para i=0, en forma diagonal (t-j)
-                            peGrid[i][j].b = B[t - j][j];
-                        else
-                            peGrid[i][j].b = 0;
+                        //Sumas parciales desde arriba
+                        int16_t psum_in = (i>0) ? peGrid[i - 1][j].sum : 0;
                         //MAC
-                        peGrid[i][j].compute();
+                        peGrid[i][j].compute(psum_in);
+                        
                     }
                 }
-                /** 
-                // Print first row and first column a and b after each t
-                cout << "First row (a, b): ";
-                for (int j = 0; j < N; ++j)
-                    cout << "(" << peGrid[0][j].a << "," << peGrid[0][j].b << ") ";
-                cout << "\nFirst column (a, b): ";
-                for (int i = 0; i < N; ++i)
-                    cout << "(" << peGrid[i][0].a << "," << peGrid[i][0].b << ") ";
-                cout << "\n";*/
+            
+                
+            }
         }
-}
-
+        void setWeights(const int16_t weights[N][N]) {
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < N; ++j)
+                    peGrid[i][j].setWeight(weights[i][j]);
+            }
+        }
         void printResult() {
         cout << "Matrix C = A x B (from PE grid):\n";
         for (int i = 0; i < N; ++i) {
             for (int j = 0; j < N; ++j)
-                cout << peGrid[i][j].sum << "\t";
+                cout << output[i][j] << "\t";
         cout << "\n";
             }
         }
@@ -62,6 +56,7 @@ class SystolicArray {
             for (int j = 0; j < N; ++j)
                 peGrid[i][j].resetInputs();
         }
+        
     }
     
     
@@ -84,16 +79,9 @@ int main() {
 
     // Output image (same size, zeroed)
     cv::Mat out = cv::Mat::zeros(rows, cols, CV_16S);
-    /** 
-    int16_t B[N][N] = { 
-        { 0,  0, -1,  0,  0},
-        { 0, -1, -2, -1,  0},
-        {-1, -2, 16, -2, -1},
-        { 0, -1, -2,  1,  0},
-        { 0,  0, -1,  0,  0} };
-    */
+    
 
-    int16_t B[N][N] = { 
+    int16_t W[N][N] = { 
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -106,6 +94,7 @@ int main() {
         { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1} };
     SystolicArray sa;
 
+    sa.setWeights(W);
     // Slide window over image
     for (int i = 0; i <= rows - N; ++i) {
         for (int j = 0; j <= cols - N; ++j) {
@@ -116,14 +105,18 @@ int main() {
                     A[x][y] = img.at<uchar>(i + x, j + y);
 
             sa.resetPEs();
-            sa.multiply(A, B);
+            sa.multiply(A);
 
-            // Store the center PE sum in the output image
-            out.at<short>(i + N/2, j + N/2) = sa.peGrid[N/2][N/2].sum;
+            for (int k = 0; k < N; ++k) {
+                // Each output channel (column) gets its own output
+                // Write to the bottom row of the current window
+                if ((i + N - 1) < out.rows && (j + k) < out.cols)
+                    out.at<short>(i + N - 1, j + k) += sa.peGrid[N - 1][k].sum;
+            }
         }
     }
 
-    // Normalize and convert to 8-bit for saving
+    //normalize 
     double minVal, maxVal;
     cv::minMaxLoc(out, &minVal, &maxVal);
     cv::Mat out8u;
@@ -138,6 +131,7 @@ int main() {
         }
     }
 
+    //write image
     cv::imwrite("output.png", out8u);
     cout << "Saved result to output.png\n";
     return 0;
