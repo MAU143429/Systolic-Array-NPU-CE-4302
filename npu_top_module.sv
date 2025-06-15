@@ -55,7 +55,7 @@ module npu_top_module (
 	 
 	 
 	 
-	 // Cargar Matriz A resultante en RAM (Nueva posicion)
+	 // Cargar Matriz A resultante en RAM (Nueva posicion)*/
 	 
 	 
 	
