@@ -4,7 +4,7 @@ from scipy.ndimage import convolve
 import cv2
 
 # Load custom grayscale image
-image_path = "image5.jpg"  # replace with your image path
+image_path = "Prototype-Testing/cat.jpg"  # replace with your image path
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Ensure the image is square by cropping to the smallest dimension
@@ -29,7 +29,7 @@ step_edge_10x10 = np.array([
 convolved = convolve(image.astype(np.int32), step_edge_10x10, mode='constant', cval=0)
 
 # Aplicar Leaky ReLU
-alpha = 0.1
+alpha = 0.13
 leaky_relu = np.where(convolved >= 0, convolved, convolved * alpha)
 
 # Normalizar
