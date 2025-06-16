@@ -4,7 +4,7 @@ module systolic_array (
     input  logic        start,
     input  logic signed [15:0] A[10][10],  
     output logic        done,
-    output logic signed [15:0] A_result[0:37][0:9]  // 19x10 resultado final
+    output logic signed [15:0] A_result[0:9][0:9]  // Changed to 10x10 output
 );
 
     // Interno: pesos constantes (WS: Weight Stationary)
@@ -21,6 +21,9 @@ module systolic_array (
     // FSM
     typedef enum logic [1:0] {IDLE, LOAD_WEIGHTS, RUN, DONE} state_t;
     state_t state;
+
+    // Buffer para almacenar resultados intermedios
+    logic signed [15:0] result_buffer[0:37][0:9];
 
     // Inicialización de pesos (5 filas de 1, 5 filas de -1)
     always_ff @(posedge clk or posedge rst) begin
@@ -99,7 +102,7 @@ module systolic_array (
                     end
 
                     cycle <= cycle + 1;
-                    if (cycle == 37) begin  // 10 datos + 9 delays = 19 ciclos
+                    if (cycle == 37) begin  // 10 datos + 9 delays = 19 ciclos + margen
                         state <= DONE;
                         done <= 1;
                     end
@@ -131,55 +134,22 @@ module systolic_array (
         end
     endgenerate
 
-    // Captura de resultados en matriz 19x10
+    // Captura de resultados en buffer temporal
     always_ff @(posedge clk) begin
-        integer i, j;
         if (state == RUN) begin
-            // Capturamos todos los ciclos de RUN (0-28)
-            for (j = 0; j < 10; j++) begin
-                A_result[cycle][j] <= psum_wire[10][j];
+            for (int j = 0; j < 10; j++) begin
+                result_buffer[cycle][j] <= psum_wire[10][j];
             end
         end
     end
 
-endmodule
-
-module pe_t (
-    input  logic        clk,
-    input  logic        rst,
-    input  logic signed [15:0] iact_in,    // Activación de entrada
-    input  logic signed [15:0] psum_in,    // Suma parcial de entrada
-    input  logic signed [15:0] weight_in,  // Peso de entrada
-    output logic signed [15:0] iact_out,   // Activación de salida
-    output logic signed [15:0] psum_out,   // Suma parcial de salida
-    output logic signed [15:0] weight_out  // Peso de salida
-);
-
-    // Registros internos
-    logic signed [15:0] weight_reg;   // Registro para peso estacionario
-    logic signed [31:0] product;      // Resultado de multiplicación
-    logic signed [31:0] psum_acc;     // Acumulador de suma parcial
-
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            weight_reg <= '0;
-            product    <= '0;
-            psum_acc   <= '0;
-        end else begin
-            // Registro de peso (solo se carga en el primer ciclo)
-            weight_reg <= weight_in;
-            
-            // Multiplicación activación x peso
-            product <= iact_in * weight_reg;
-            
-            // Acumulación de suma parcial
-            psum_acc <= psum_in + product;
+    // Extraer solo ciclos 12-21 (10 ciclos) para la salida final
+    always_comb begin
+        for (int i = 0; i < 10; i++) begin
+            for (int j = 0; j < 10; j++) begin
+                A_result[i][j] = result_buffer[i+12][j];
+            end
         end
     end
-
-    // Asignación de salidas
-    assign iact_out   = iact_in;     // Pasa la activación sin modificar
-    assign psum_out   = psum_acc;    // Suma parcial acumulada
-    assign weight_out = weight_reg;  // Peso registrado
 
 endmodule
