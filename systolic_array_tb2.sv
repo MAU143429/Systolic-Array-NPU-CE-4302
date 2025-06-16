@@ -19,6 +19,20 @@ module systolic_array_tb2;
         .A_result(A_result)
     );
 
+    // Expected result matrix
+    localparam logic signed [WIDTH-1:0] expected_result[SIZE][SIZE] = '{
+        '{189,   189,  189,   189, 189, 189,  189,  189, 189,  189},
+        '{-378,   -378,  -378,   -378, -378, -378,  -378,  -378, -378,  -378},
+        '{333,   333,  333,   333, 333, 333,  333,  333, 333,  333},
+        '{-11,   -11,  -11,   -11, -11, -11,  -11,  -11, -11,  -11},
+        '{-167,   -167,  -167,   -167, -167, -167,  -167,  -167, -167,  -167},
+        '{-142,   -142,  -142,   -142, -142, -142,  -142,  -142, -142,  -142},
+        '{96,   96,  96,   96, 96, 96,  96,  96, 96,  96},
+        '{123,   123,  123,   123, 123, 123,  123,  123, 123,  123},
+        '{38,   38,  38,   38, 38, 38,  38, 38, 38,  38},
+        '{-150,   -150,  -150,   -150, -150, -150,  -150,  -150, -150,  -150}
+    };
+
     // Generación de reloj
     initial begin
         clk = 0;
@@ -29,7 +43,7 @@ module systolic_array_tb2;
 
     // Simulación
     initial begin
-        integer i, j, errors;
+        integer i, j, errors = 0;
         
         // Inicialización
         rst = 1;
@@ -79,32 +93,36 @@ module systolic_array_tb2;
         wait(done);
         #50;
         
-        // Mostrar resultados (solo 10x10)
+        // Mostrar resultados
         $display("\n=== MATRIZ DE RESULTADOS (10x10) ===");
-        $display("Extraídos de los ciclos 12-21:");
+        $display("      Col: 0     1     2     3     4     5     6     7     8     9");
+        $display("     ------------------------------------------------------------");
         for (i = 0; i < SIZE; i++) begin
-            $write("Fila %2d: ", i);
+            $write("Fila %1d: ", i);
             for (j = 0; j < SIZE; j++) begin
                 $write("%6d ", A_result[i][j]);
             end
             $display();
         end
         
-        // Verificación básica
-        errors = 0;
+        // Verificación detallada contra valores esperados
+        $display("\n=== VERIFICACIÓN DE RESULTADOS ===");
         for (i = 0; i < SIZE; i++) begin
             for (j = 0; j < SIZE; j++) begin
-                if (A_result[i][j] === 'x) begin
-                    $display("Error: Resultado no válido en [%0d][%0d]", i, j);
+                if (A_result[i][j] !== expected_result[i][j]) begin
+                    $display("ERROR en [%0d][%0d]: Esperado %6d, Obtenido %6d", 
+                            i, j, expected_result[i][j], A_result[i][j]);
                     errors++;
                 end
             end
         end
         
+        // Resumen final
+        $display("\n=== RESUMEN DE VERIFICACIÓN ===");
         if (errors == 0) begin
-            $display("\nTEST PASADO: Todos los resultados son válidos");
+            $display("¡PRUEBA EXITOSA! Todos los resultados coinciden con los valores esperados");
         end else begin
-            $display("\nTEST FALLADO: %0d errores encontrados", errors);
+            $display("PRUEBA FALLIDA: Se encontraron %0d errores", errors);
         end
         
         $finish;
