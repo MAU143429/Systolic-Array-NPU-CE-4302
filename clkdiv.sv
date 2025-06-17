@@ -1,11 +1,8 @@
 module clkdiv(
-	input logic clk,
-	output logic clk_25
+    input  logic clk,      // 50 MHz
+    output logic clk_25    // 25 MHz
 );
-	
-	reg [15:0] cnt;
-	
-	always @(posedge clk)
-		{clk_25, cnt} <= cnt + 16'h8000;
-		
+    always @(posedge clk) begin
+        clk_25 <= ~clk_25; // Alterna en cada flanco (divide por 2)
+    end
 endmodule

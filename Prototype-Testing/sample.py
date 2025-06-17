@@ -4,7 +4,7 @@ from scipy.ndimage import convolve
 import cv2
 
 # Load custom grayscale image
-image_path = "Prototype-Testing/cat.jpg"  # replace with your image path
+image_path = "Prototype-Testing/image5.jpg"  # replace with your image path
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Ensure the image is square by cropping to the smallest dimension

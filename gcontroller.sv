@@ -12,7 +12,6 @@ module gcontroller(
 			if (vs == 10'd525) vs = 0;
 		end
 	end
-	
 									   //Parte    Porch       Parte     Porch        Sincronizacion
 										//Activa   Horizontal  Activa    Horizontal   Horizontal
 	assign vga_hsync = ~(hs > 10'd640 + 10'd16 & hs < 10'd640 + 10'd16 +    10'd96);
@@ -25,6 +24,6 @@ module gcontroller(
 	
 	// Señales de sincronización adicionales
 	assign sync_b = vga_hsync & vga_vsync;
-	assign sync_blank = ((hs < 10'd640) & (vs < 10'd480));
+	assign sync_blank = ~((hs < 10'd640) & (vs < 10'd480));
 
 endmodule
