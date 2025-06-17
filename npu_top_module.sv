@@ -4,17 +4,15 @@ module npu_top_module (
     input  logic        start,        // Start processing
     input  logic        enter,        // Input for paintscreen module
     output logic        done,         // Processing complete
-    output logic [7:0]  vga_red,      // VGA red output
-    output logic [7:0]  vga_green,    // VGA green output
-    output logic [7:0]  vga_blue,     // VGA blue output
+	 output logic        clk_25,       // 25 Mhz clock
+    output logic [7:0]  red,      // VGA red output
+    output logic [7:0]  green,    // VGA green output
+    output logic [7:0]  blue,     // VGA blue output
     output logic        vga_hsync,    // VGA horizontal sync
     output logic        vga_vsync,    // VGA vertical sync
     output logic        sync_blank,   // VGA blank signal
     output logic        sync_b        // VGA sync signal
 );
-
-    // Clock divider signals
-    logic clk_25;
     
     // RAM signals
     logic [18:0] ram_addr_read;
@@ -97,9 +95,9 @@ module npu_top_module (
         .vga_vsync(vga_vsync),
         .sync_blank(sync_blank),
         .sync_b(sync_b),
-        .red(vga_red),
-        .green(vga_green),
-        .blue(vga_blue)
+        .red(red),
+        .green(green),
+        .blue(blue)
     );
     
     // FSM for image processing
