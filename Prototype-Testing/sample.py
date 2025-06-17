@@ -1,52 +1,40 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import convolve
-import cv2
 
-# Load custom grayscale image
-image_path = "Prototype-Testing/image5.jpg"  # replace with your image path
-original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+# Define the matrices
+weights = np.array([
+    [1, 2, 3, 4, 5, 5, 4, 3, 2, 1],
+    [2, 4, 6, 8, 10, 10, 8, 6, 4, 2],
+    [3, 6, 9, 12, 15, 15, 12, 9, 6, 3],
+    [4, 8, 12, 16, 20, 20, 16, 12, 8, 4],
+    [5, 10, 15, 20, 25, 25, 20, 15, 10, 5],
+    [5, 10, 15, 20, 25, 25, 20, 15, 10, 5],
+    [4, 8, 12, 16, 20, 20, 16, 12, 8, 4],
+    [3, 6, 9, 12, 15, 15, 12, 9, 6, 3],
+    [2, 4, 6, 8, 10, 10, 8, 6, 4, 2],
+    [1, 2, 3, 4, 5, 5, 4, 3, 2, 1]
+])
 
-# Ensure the image is square by cropping to the smallest dimension
-height, width = original_image.shape
-side = min(height, width)
-image = original_image[:side, :side]  # crop to nxn
+input_matrix = np.array([
+    [123, 45, 89, 200, 34, 67, 155, 210, 11, 98],
+    [76, 233, 54, 128, 99, 177, 32, 145, 66, 201],
+    [43, 87, 199, 22, 110, 255, 0, 78, 164, 33],
+    [90, 112, 65, 187, 44, 23, 156, 79, 122, 211],
+    [55, 167, 89, 134, 76, 12, 98, 200, 45, 67],
+    [188, 77, 143, 22, 109, 34, 165, 88, 199, 111],
+    [20, 154, 76, 43, 87, 222, 33, 145, 66, 178],
+    [99, 122, 45, 167, 89, 200, 11, 34, 155, 76],
+    [177, 65, 32, 144, 98, 211, 87, 23, 166, 44],
+    [53, 188, 77, 199, 122, 34, 156, 89, 200, 12]
+])
 
-step_edge_10x10 = np.array([
-    [ 1]*10, 
-    [ 1]*10,
-    [ 1]*10,
-    [ 1]*10,
-    [ 1]*10,
-    [-1]*10,
-    [-1]*10,
-    [-1]*10,
-    [-1]*10,
-    [-1]*10
-], dtype=np.int32)
+# Perform matrix multiplication
+result = np.dot(input_matrix, weights)
 
-# Aplicar convolución con step_edge_10x10
-convolved = convolve(image.astype(np.int32), step_edge_10x10, mode='constant', cval=0)
+# Normalize the result
+min_val = result.min()
+max_val = result.max()
+normalized_result = ((result - min_val) * 255 / (max_val - min_val)).astype(np.uint8)
 
-# Aplicar Leaky ReLU
-alpha = 0.13
-leaky_relu = np.where(convolved >= 0, convolved, convolved * alpha)
-
-# Normalizar
-normalized = leaky_relu - leaky_relu.min()
-normalized = (normalized / normalized.max()) * 255
-normalized = normalized.astype(np.uint8)
-
-# Mostrar resultados
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-axs[0].imshow(image, cmap='gray')
-axs[0].set_title('Imagen Original')
-axs[0].axis('off')
-
-axs[1].imshow(normalized, cmap='gray')
-axs[1].set_title('Step Edge 10x10 + Leaky ReLU')
-axs[1].axis('off')
-
-plt.tight_layout()
-plt.show()
-
+# Print the normalized result
+print("Normalized Result:")
+print(normalized_result)
