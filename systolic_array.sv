@@ -4,31 +4,37 @@ module systolic_array (
     input  logic        start,
     input  logic signed [15:0] A[10][10], 
     output logic        done,
-    output logic signed [15:0] A_result[0:9][0:9]  // Changed to 10x10 output
+    output logic signed [15:0] A_result[0:9][0:9]
 );
 
-    // Interno: pesos constantes (WS: Weight Stationary)
+    // Internal weights (WS: Weight Stationary)
     logic signed [15:0] weights[10][10];
 
-    // Conexiones entre PEs
-    logic signed [15:0] iact_wire[10][11];   // Activaciones: izquierda a derecha
-    logic signed [15:0] psum_wire[11][10];    // Sumas parciales: arriba a abajo
-    logic signed [15:0] weight_wire[10][11];  // Pesos: izquierda a derecha
+    // PE interconnection wires - completely separated
+    logic signed [15:0] pe_iact_in[10][10];   // Input to each PE
+    logic signed [15:0] pe_iact_out[10][10];  // Output from each PE
+    logic signed [15:0] pe_psum_in[10][10];   // Psum input to each PE
+    logic signed [15:0] pe_psum_out[10][10];  // Psum output from each PE
+    logic signed [15:0] pe_weight_in[10][10]; // Weight input to each PE
+    logic signed [15:0] pe_weight_out[10][10]; // Weight output from each PE
 
-    // Contador de ciclos para controlar el flujo
+    // Temporary wires for first column inputs
+    logic signed [15:0] first_col_iact[10];
+    logic signed [15:0] first_col_weight[10];
+
+    // Cycle counter
     logic [7:0] cycle;
 
-    // FSM
+    // FSM states
     typedef enum logic [1:0] {IDLE, LOAD_WEIGHTS, RUN, DONE} state_t;
     state_t state;
 
-    // Buffer para almacenar resultados intermedios
-    logic signed [15:0] result_buffer[0:37][0:9];
+    // Buffer for results
+    logic signed [15:0] result_buffer[0:9][0:9];
 
-    // Inicialización y actualización de pesos
+    // Weight initialization
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            // Inicialización con los pesos piramidales que especificaste
             weights[0]  <= '{ 1,  2,  3,  4,  5,  5,  4,  3,  2,  1};
             weights[1]  <= '{ 2,  4,  6,  8, 10, 10,  8,  6,  4,  2};
             weights[2]  <= '{ 3,  6,  9, 12, 15, 15, 12,  9,  6,  3};
@@ -42,7 +48,7 @@ module systolic_array (
         end
     end
 
-    // FSM y control de entrada
+    // FSM and control logic
     always_ff @(posedge clk or posedge rst) begin
         integer i, j;
         if (rst) begin
@@ -50,17 +56,16 @@ module systolic_array (
             state <= IDLE;
             done <= 0;
             
-            // Inicializar conexiones
+            // Initialize first column inputs
             for (i = 0; i < 10; i++) begin
-                for (j = 0; j < 11; j++) begin
-                    iact_wire[i][j] <= 0;
-                    if (j < 10) weight_wire[i][j] <= 0;
-                end
+                first_col_iact[i] <= 0;
+                first_col_weight[i] <= 0;
             end
             
-            for (i = 0; i < 11; i++) begin
+            // Initialize result buffer
+            for (i = 0; i < 10; i++) begin
                 for (j = 0; j < 10; j++) begin
-                    psum_wire[i][j] <= 0;
+                    result_buffer[i][j] <= 0;
                 end
             end
             
@@ -75,9 +80,9 @@ module systolic_array (
                 end
                 
                 LOAD_WEIGHTS: begin
-                    // Cargar pesos en los registros de desplazamiento
+                    // Load weights into the first column
                     for (i = 0; i < 10; i++) begin
-                        weight_wire[i][0] <= weights[i][cycle];
+                        first_col_weight[i] <= weights[i][cycle];
                     end
                     
                     cycle <= cycle + 1;
@@ -88,27 +93,27 @@ module systolic_array (
                 end
 
                 RUN: begin
-                    // Patrón de inyección con delays
+                    // Input pattern with delays
                     for (i = 0; i < 10; i++) begin
                         automatic int delay_offset = i;
                         automatic int data_offset = cycle - delay_offset;
                         
                         if (data_offset >= 0 && data_offset < 10) begin
-                            iact_wire[i][0] <= A[i][9-data_offset]; // Leemos en orden inverso
+                            first_col_iact[i] <= A[i][9-data_offset]; // Read in reverse order
                         end else begin
-                            iact_wire[i][0] <= 0; // Delay
+                            first_col_iact[i] <= 0; // Delay
                         end
                     end
-                    
-                    // Desplazar pesos continuamente
-                    for (i = 0; i < 10; i++) begin
-                        for (j = 1; j < 10; j++) begin
-                            weight_wire[i][j] <= weight_wire[i][j-1];
+
+                    // Capture results only during valid output cycles (12-21)
+                    if (cycle >= 12 && cycle <= 21) begin
+                        for (j = 0; j < 10; j++) begin
+                            result_buffer[cycle-12][j] <= pe_psum_out[9][j];
                         end
                     end
 
                     cycle <= cycle + 1;
-                    if (cycle == 37) begin  // 10 datos + 9 delays = 19 ciclos + margen
+                    if (cycle == 37) begin
                         state <= DONE;
                         done <= 1;
                     end
@@ -121,41 +126,41 @@ module systolic_array (
         end
     end
 
-    // Instanciación de los PEs
+    // Generate systolic array connections
     genvar i, j;
     generate
         for (i = 0; i < 10; i++) begin : row
             for (j = 0; j < 10; j++) begin : col
+                // Connect inputs based on position
+                if (j == 0) begin
+                    // First column gets inputs from control logic
+                    assign pe_iact_in[i][j] = first_col_iact[i];
+                    assign pe_weight_in[i][j] = first_col_weight[i];
+                end else begin
+                    // Other columns get inputs from previous PEs
+                    assign pe_iact_in[i][j] = pe_iact_out[i][j-1];
+                    assign pe_weight_in[i][j] = pe_weight_out[i][j-1];
+                end
+                
+                // Connect psum inputs: first row gets 0, others get from row above
+                assign pe_psum_in[i][j] = (i == 0) ? 16'sd0 : pe_psum_out[i-1][j];
+                
+                // Instantiate PE
                 pe_t pe_inst (
                     .clk(clk),
                     .rst(rst),
-                    .iact_in(iact_wire[i][j]),
-                    .psum_in(i == 0 ? 16'sd0 : psum_wire[i][j]),
-                    .weight_in(weight_wire[i][j]),
-                    .iact_out(iact_wire[i][j+1]),
-                    .psum_out(psum_wire[i+1][j]),
-                    .weight_out(weight_wire[i][j+1])
+                    .iact_in(pe_iact_in[i][j]),
+                    .psum_in(pe_psum_in[i][j]),
+                    .weight_in(pe_weight_in[i][j]),
+                    .iact_out(pe_iact_out[i][j]),
+                    .psum_out(pe_psum_out[i][j]),
+                    .weight_out(pe_weight_out[i][j])
                 );
             end
         end
     endgenerate
 
-    // Captura de resultados en buffer temporal
-    always_ff @(posedge clk) begin
-        if (state == RUN) begin
-            for (int j = 0; j < 10; j++) begin
-                result_buffer[cycle][j] <= psum_wire[10][j];
-            end
-        end
-    end
-
-    // Extraer solo ciclos 12-21 (10 ciclos) para la salida final
-    always_comb begin
-        for (int i = 0; i < 10; i++) begin
-            for (int j = 0; j < 10; j++) begin
-                A_result[i][j] = result_buffer[i+12][j];
-            end
-        end
-    end
+    // Direct assignment of final results
+    assign A_result = result_buffer;
 
 endmodule

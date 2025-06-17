@@ -1,249 +1,227 @@
 module npu_top_module (
-    input  logic clk,
-    input  logic rst,
-    input  logic start_button,
-    output logic processing_done,
-	 output logic clk_25,
-    output logic vga_hsync,
-    output logic vga_vsync,
-    output logic sync_blank,
-    output logic sync_b,
-    output logic [7:0] red,
-    output logic [7:0] green,
-    output logic [7:0] blue,
-    input  logic enter
+    input  logic        clk,          // 50 MHz clock
+    input  logic        rst,          // Reset signal
+    input  logic        start,        // Start processing
+    input  logic        enter,        // Input for paintscreen module
+    output logic        done,         // Processing complete
+    output logic [7:0]  vga_red,      // VGA red output
+    output logic [7:0]  vga_green,    // VGA green output
+    output logic [7:0]  vga_blue,     // VGA blue output
+    output logic        vga_hsync,    // VGA horizontal sync
+    output logic        vga_vsync,    // VGA vertical sync
+    output logic        sync_blank,   // VGA blank signal
+    output logic        sync_b        // VGA sync signal
 );
 
-    // Image parameters (changed to 400x400 to match your paintscreen module)
-    parameter IMG_WIDTH = 400;
-    parameter IMG_HEIGHT = 400;
-    parameter TILE_SIZE = 10;
-    parameter IMG_SIZE = IMG_WIDTH * IMG_HEIGHT;
-    parameter NUM_TILES_X = IMG_WIDTH / TILE_SIZE;
-    parameter NUM_TILES_Y = IMG_HEIGHT / TILE_SIZE;
-	 
-	 // RAM Variables
-	 
-	 logic [18:0] pixel_address;
-	 logic [7:0] pixel_data;
-    
-    // Control signals
-    logic start_processing;
-    logic tile_processed;
-    logic [18:0] read_addr;
-    logic [18:0] write_addr;
-    
-    // Signals for the NPU
-    logic signed [15:0] current_tile[0:TILE_SIZE-1][0:TILE_SIZE-1];
-    logic [7:0] npu_result[0:TILE_SIZE-1][0:TILE_SIZE-1];
-    logic npu_done;
+    // Clock divider signals
+    logic clk_25;
     
     // RAM signals
-    logic [7:0] ram_data_out;
-    logic [7:0] ram_data_in;
-    logic ram_wren;
+    logic [18:0] ram_addr_read;
+    logic [18:0] ram_addr_write;
+    logic [7:0]  ram_data_read;
+    logic [7:0]  ram_data_write;
+    logic        ram_wren;
     
-    // Tile counters
-    logic [5:0] tile_x;  // 0 to 39 (400/10 - 1)
-    logic [5:0] tile_y;  // 0 to 39
+    // VGA signals
+    logic [18:0] vga_pixel_address;
+    logic [7:0]  vga_pixel_data;
     
-    // Element counters
-    logic [3:0] element_x, element_y;
+    // NPU signals
+    logic npu_start;
+    logic npu_done;
+    logic signed [15:0] input_matrix[9:0][9:0];
+    logic [7:0] output_matrix[9:0][9:0];
     
-    // State machine
+    // FSM signals
     typedef enum {
         IDLE,
-        READ_TILE,
-        PROCESS_TILE,
-        WRITE_TILE,
-        DONE
+        READ_SUBMATRIX,
+        PROCESS_NPU,
+        WRITE_RESULT,
+		  READ_SUBMATRIX_WAIT,
+		  WRITE_RESULT_WAIT,
+        FINISH
     } state_t;
+    state_t state;
     
-    state_t current_state, next_state;
+    // Position counters
+    logic [5:0] submatrix_x;  // 0-39 (400/10)
+    logic [5:0] submatrix_y;  // 0-39 (400/10)
     
-    // Instantiate clock divider
-    clkdiv clk_div (
+    // Submatrix loading counter
+    logic [3:0] load_row;
+    logic [3:0] load_col;
+    
+    // Submatrix writing counter
+    logic [3:0] write_row;
+    logic [3:0] write_col;
+    
+    // Clock divider
+    clkdiv clk_divider (
         .clk(clk),
         .clk_25(clk_25)
     );
     
-    // Instantiate VGA controller
+    // Dual-port RAM
+    ram image_ram (
+        .address_a(ram_addr_read),
+        .address_b(vga_pixel_address),
+        .clock(clk_25),
+        .data_a(ram_data_write),
+        .data_b(8'h00),  // Not writing from port B
+        .wren_a(ram_wren),
+        .wren_b(1'b0),   // Never write from port B
+        .q_a(ram_data_read),
+        .q_b(vga_pixel_data)
+    );
+    
+    // NPU instance
+    npu image_npu (
+        .clk(clk_25),
+        .rst(rst),
+        .start(npu_start),
+        .input_matrix(input_matrix),
+        .done(npu_done),
+        .final_output(output_matrix)
+    );
+    
+    // VGA controller
     vga vga_controller (
         .clk(clk),
         .enter(enter),
-		  .pixel_data(pixel_data),
+        .clk_25(clk_25),
+        .pixel_data(vga_pixel_data),
+        .pixel_address(vga_pixel_address),
         .vga_hsync(vga_hsync),
         .vga_vsync(vga_vsync),
         .sync_blank(sync_blank),
         .sync_b(sync_b),
-        .red(red),
-        .green(green),
-        .blue(blue),
-        .clk_25(clk_25),
-		  .pixel_address(pixel_address)
+        .red(vga_red),
+        .green(vga_green),
+        .blue(vga_blue)
     );
     
-    // Instantiate RAM
-    ram image_ram (
-        .address_a(read_addr),
-        .address_b(pixel_address),
-        .clock(clk_25),
-        .data_a(8'b0),
-        .data_b(ram_data_in),
-        .wren_a(1'b0),
-        .wren_b(ram_wren),
-        .q_a(pixel_data),
-        .q_b()  
-    );
-	 
-    // Instantiate NPU
-    npu image_npu (
-        .clk(clk_25),  // Use 25MHz clock for processing
-        .rst(rst),
-        .start(start_processing),
-        .input_matrix(current_tile),
-        .done(npu_done),
-        .final_output(npu_result)
-    );
-    
-    // State register
+    // FSM for image processing
     always_ff @(posedge clk_25 or posedge rst) begin
         if (rst) begin
-            current_state <= IDLE;
+            state <= IDLE;
+            submatrix_x <= 0;
+            submatrix_y <= 0;
+            load_row <= 0;
+            load_col <= 0;
+            write_row <= 0;
+            write_col <= 0;
+            ram_wren <= 0;
+            npu_start <= 0;
+            done <= 0;
+            
+            // Initialize input matrix
+            for (int i = 0; i < 10; i++) begin
+                for (int j = 0; j < 10; j++) begin
+                    input_matrix[i][j] <= 0;
+                end
+            end
         end else begin
-            current_state <= next_state;
-        end
-    end
-    
-    // Next state logic
-    always_comb begin
-        next_state = current_state;
-        
-        case (current_state)
-            IDLE: begin
-                if (start_button) begin
-                    next_state = READ_TILE;
-                end
-            end
-            
-            READ_TILE: begin
-                if (element_x == TILE_SIZE-1 && element_y == TILE_SIZE-1) begin
-                    next_state = PROCESS_TILE;
-                end
-            end
-            
-            PROCESS_TILE: begin
-                if (npu_done) begin
-                    next_state = WRITE_TILE;
-                end
-            end
-            
-            WRITE_TILE: begin
-                if (element_x == TILE_SIZE-1 && element_y == TILE_SIZE-1) begin
-                    if (tile_x == NUM_TILES_X-1 && tile_y == NUM_TILES_Y-1) begin
-                        next_state = DONE;
-                    end else begin
-                        next_state = READ_TILE;
+            case (state)
+                IDLE: begin
+                    if (start) begin
+                        state <= READ_SUBMATRIX;
+                        submatrix_x <= 0;
+                        submatrix_y <= 0;
+                        load_row <= 0;
+                        load_col <= 0;
+                        done <= 0;
                     end
                 end
-            end
-            
-            DONE: begin
-                // Stay here until reset
-            end
-        endcase
-    end
-    
-    // Counters and address control
-    always_ff @(posedge clk_25 or posedge rst) begin
-        if (rst) begin
-            tile_x <= 0;
-            tile_y <= 0;
-            element_x <= 0;
-            element_y <= 0;
-            read_addr <= 0;
-            write_addr <= IMG_SIZE;  // Start writing after original image
-            processing_done <= 0;
-        end else begin
-            case (current_state)
-                IDLE: begin
-                    tile_x <= 0;
-                    tile_y <= 0;
-                    element_x <= 0;
-                    element_y <= 0;
-                    read_addr <= 0;
-                    write_addr <= IMG_SIZE;
-                    processing_done <= 0;
+                
+                READ_SUBMATRIX: begin
+                    // Calculate address in original image
+                    ram_addr_read <= (submatrix_y * 10 + load_row) * 400 + (submatrix_x * 10) + load_col;
+                    
+                    // Wait one cycle for RAM read latency
+                    state <= READ_SUBMATRIX_WAIT;
                 end
                 
-                READ_TILE: begin
-                    // Calculate read address: (tile_y*TILE_SIZE + element_y)*IMG_WIDTH + (tile_x*TILE_SIZE + element_x)
-                    read_addr <= (tile_y*TILE_SIZE + element_y)*IMG_WIDTH + (tile_x*TILE_SIZE + element_x);
+                READ_SUBMATRIX_WAIT: begin
+                    // Store the read value in the input matrix
+                    input_matrix[load_row][load_col] <= {8'h00, ram_data_read};
                     
-                    if (element_x == TILE_SIZE-1) begin
-                        element_x <= 0;
-                        if (element_y == TILE_SIZE-1) begin
-                            element_y <= 0;
+                    // Move to next column
+                    if (load_col == 9) begin
+                        load_col <= 0;
+                        // Move to next row
+                        if (load_row == 9) begin
+                            load_row <= 0;
+                            state <= PROCESS_NPU;
+                            npu_start <= 1;
                         end else begin
-                            element_y <= element_y + 1;
+                            load_row <= load_row + 1;
+                            state <= READ_SUBMATRIX;
                         end
                     end else begin
-                        element_x <= element_x + 1;
+                        load_col <= load_col + 1;
+                        state <= READ_SUBMATRIX;
                     end
                 end
                 
-                PROCESS_TILE: begin
-                    // Wait for processing to complete
+                PROCESS_NPU: begin
+                    npu_start <= 0;
                     if (npu_done) begin
-                        element_x <= 0;
-                        element_y <= 0;
+                        state <= WRITE_RESULT;
+                        write_row <= 0;
+                        write_col <= 0;
                     end
                 end
                 
-                WRITE_TILE: begin
-                    // Calculate write address: IMG_SIZE + (tile_y*TILE_SIZE + element_y)*IMG_WIDTH + (tile_x*TILE_SIZE + element_x)
-                    write_addr <= IMG_SIZE + (tile_y*TILE_SIZE + element_y)*IMG_WIDTH + (tile_x*TILE_SIZE + element_x);
+                WRITE_RESULT: begin
+                    // Calculate address in output area (160000 + offset)
+                    ram_addr_write <= 160000 + (submatrix_y * 10 + write_row) * 400 + (submatrix_x * 10) + write_col;
+                    ram_data_write <= output_matrix[write_row][write_col];
+                    ram_wren <= 1;
                     
-                    if (element_x == TILE_SIZE-1) begin
-                        element_x <= 0;
-                        if (element_y == TILE_SIZE-1) begin
-                            element_y <= 0;
-                            
-                            // Move to next tile
-                            if (tile_x == NUM_TILES_X-1) begin
-                                tile_x <= 0;
-                                tile_y <= tile_y + 1;
+                    // Wait one cycle for RAM write
+                    state <= WRITE_RESULT_WAIT;
+                end
+                
+                WRITE_RESULT_WAIT: begin
+                    ram_wren <= 0;
+                    
+                    // Move to next column
+                    if (write_col == 9) begin
+                        write_col <= 0;
+                        // Move to next row
+                        if (write_row == 9) begin
+                            write_row <= 0;
+                            // Move to next submatrix
+                            if (submatrix_x == 39) begin
+                                submatrix_x <= 0;
+                                if (submatrix_y == 39) begin
+                                    state <= FINISH;
+                                end else begin
+                                    submatrix_y <= submatrix_y + 1;
+                                    state <= READ_SUBMATRIX;
+                                end
                             end else begin
-                                tile_x <= tile_x + 1;
+                                submatrix_x <= submatrix_x + 1;
+                                state <= READ_SUBMATRIX;
                             end
                         end else begin
-                            element_y <= element_y + 1;
+                            write_row <= write_row + 1;
+                            state <= WRITE_RESULT;
                         end
                     end else begin
-                        element_x <= element_x + 1;
+                        write_col <= write_col + 1;
+                        state <= WRITE_RESULT;
                     end
                 end
                 
-                DONE: begin
-                    processing_done <= 1;
+                FINISH: begin
+                    done <= 1;
+                    state <= IDLE;
                 end
             endcase
         end
     end
-    
-    // Read data from RAM and form 10x10 tile
-    always_ff @(posedge clk_25) begin
-        if (current_state == READ_TILE) begin
-            // Convert 8-bit unsigned to 16-bit signed
-            current_tile[element_y][element_x] <= {8'b0, ram_data_out};
-        end
-    end
-    
-    // Write data to RAM
-    assign ram_data_in = npu_result[element_y][element_x];
-    assign ram_wren = (current_state == WRITE_TILE);
-    
-    // Control signals
-    assign start_processing = (current_state == PROCESS_TILE);
-    
+
 endmodule
