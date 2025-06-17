@@ -19,18 +19,18 @@ module systolic_array_tb2;
         .A_result(A_result)
     );
 
-    // Expected result matrix
+    // Expected result matrix for pyramid weights
     localparam logic signed [WIDTH-1:0] expected_result[SIZE][SIZE] = '{
-        '{189,   189,  189,   189, 189, 189,  189,  189, 189,  189},
-        '{-378,   -378,  -378,   -378, -378, -378,  -378,  -378, -378,  -378},
-        '{333,   333,  333,   333, 333, 333,  333,  333, 333,  333},
-        '{-11,   -11,  -11,   -11, -11, -11,  -11,  -11, -11,  -11},
-        '{-167,   -167,  -167,   -167, -167, -167,  -167,  -167, -167,  -167},
-        '{-142,   -142,  -142,   -142, -142, -142,  -142,  -142, -142,  -142},
-        '{96,   96,  96,   96, 96, 96,  96,  96, 96,  96},
-        '{123,   123,  123,   123, 123, 123,  123,  123, 123,  123},
-        '{38,   38,  38,   38, 38, 38,  38, 38, 38,  38},
-        '{-150,   -150,  -150,   -150, -150, -150,  -150,  -150, -150,  -150}
+        '{ 1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750},
+        '{ 3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500},
+        '{ 5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250},
+        '{ 7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000},
+        '{ 8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750},
+        '{ 8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750,  8750},
+        '{ 7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000,  7000},
+        '{ 5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250,  5250},
+        '{ 3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500,  3500},
+        '{ 1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750,  1750}
     };
 
     // Generación de reloj
@@ -41,6 +41,20 @@ module systolic_array_tb2;
         end
     end
 
+    // Tarea para imprimir matrices
+    task print_matrix(input string name, input logic signed [WIDTH-1:0] matrix[SIZE][SIZE]);
+        $display("=== %s ===", name);
+        $display("      Col: 0     1     2     3     4     5     6     7     8     9");
+        $display("     ------------------------------------------------------------");
+        for (int i = 0; i < SIZE; i++) begin
+            $write("Fila %1d: ", i);
+            for (int j = 0; j < SIZE; j++) begin
+                $write("%6d ", matrix[i][j]);
+            end
+            $display();
+        end
+    endtask
+
     // Simulación
     initial begin
         integer i, j, errors = 0;
@@ -49,7 +63,7 @@ module systolic_array_tb2;
         rst = 1;
         start = 0;
         
-        // Matriz de entrada específica
+        // Matriz de entrada específica (la misma que antes)
         A[0] = '{  123,  45,  89, 200,  34,  67, 155, 210,  11,  98};
         A[1] = '{   76, 233,  54, 128,  99, 177,  32, 145,  66, 201};
         A[2] = '{   43,  87, 199,  22, 110, 255,   0,  78, 164,  33};
@@ -61,28 +75,15 @@ module systolic_array_tb2;
         A[8] = '{  177,  65,  32, 144,  98, 211,  87,  23, 166,  44};
         A[9] = '{   53, 188,  77, 199, 122,  34, 156,  89, 200,  12};
         
-        // Reset
+  
+        // Reset y carga inicial de pesos
         #20;
         rst = 0;
         #20;
         
-        // Mostrar matriz de entrada
-        $display("=== MATRIZ DE ENTRADA ===");
-        for (i = 0; i < SIZE; i++) begin
-            for (j = 0; j < SIZE; j++) begin
-                $write("%4d ", A[i][j]);
-            end
-            $display();
-        end
+        // Mostrar matrices
+        print_matrix("MATRIZ DE ENTRADA", A);
         
-        // Mostrar matriz de pesos esperada
-        $display("\n=== MATRIZ DE PESOS (5 filas de 1, 5 filas de -1) ===");
-        for (i = 0; i < SIZE; i++) begin
-            for (j = 0; j < SIZE; j++) begin
-                $write("%4d ", (i < 5) ? 1 : -1);
-            end
-            $display();
-        end
         
         // Iniciar procesamiento
         start = 1;
@@ -94,16 +95,7 @@ module systolic_array_tb2;
         #50;
         
         // Mostrar resultados
-        $display("\n=== MATRIZ DE RESULTADOS (10x10) ===");
-        $display("      Col: 0     1     2     3     4     5     6     7     8     9");
-        $display("     ------------------------------------------------------------");
-        for (i = 0; i < SIZE; i++) begin
-            $write("Fila %1d: ", i);
-            for (j = 0; j < SIZE; j++) begin
-                $write("%6d ", A_result[i][j]);
-            end
-            $display();
-        end
+        print_matrix("MATRIZ DE RESULTADOS", A_result);
         
         // Verificación detallada contra valores esperados
         $display("\n=== VERIFICACIÓN DE RESULTADOS ===");

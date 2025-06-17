@@ -2,7 +2,7 @@ module systolic_array (
     input  logic        clk,
     input  logic        rst,
     input  logic        start,
-    input  logic signed [15:0] A[10][10],  
+    input  logic signed [15:0] A[10][10], 
     output logic        done,
     output logic signed [15:0] A_result[0:9][0:9]  // Changed to 10x10 output
 );
@@ -25,14 +25,20 @@ module systolic_array (
     // Buffer para almacenar resultados intermedios
     logic signed [15:0] result_buffer[0:37][0:9];
 
-    // Inicialización de pesos (5 filas de 1, 5 filas de -1)
+    // Inicialización y actualización de pesos
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            for (int i = 0; i < 10; i++) begin
-                for (int j = 0; j < 10; j++) begin
-                    weights[i][j] <= (i < 5) ? 16'sd1 : -16'sd1;
-                end
-            end
+            // Inicialización con los pesos piramidales que especificaste
+            weights[0]  <= '{ 1,  2,  3,  4,  5,  5,  4,  3,  2,  1};
+            weights[1]  <= '{ 2,  4,  6,  8, 10, 10,  8,  6,  4,  2};
+            weights[2]  <= '{ 3,  6,  9, 12, 15, 15, 12,  9,  6,  3};
+            weights[3]  <= '{ 4,  8, 12, 16, 20, 20, 16, 12,  8,  4};
+            weights[4]  <= '{ 5, 10, 15, 20, 25, 25, 20, 15, 10,  5};
+            weights[5]  <= '{ 5, 10, 15, 20, 25, 25, 20, 15, 10,  5};
+            weights[6]  <= '{ 4,  8, 12, 16, 20, 20, 16, 12,  8,  4};
+            weights[7]  <= '{ 3,  6,  9, 12, 15, 15, 12,  9,  6,  3};
+            weights[8]  <= '{ 2,  4,  6,  8, 10, 10,  8,  6,  4,  2};
+            weights[9]  <= '{ 1,  2,  3,  4,  5,  5,  4,  3,  2,  1};
         end
     end
 
