@@ -18,7 +18,7 @@ module leaky_relu (
             for (int i = 0; i < 10; i++) begin
                 for (int j = 0; j < 10; j++) begin
                     if (in_matrix[i][j] < 0)
-                        out_matrix[i][j] <= (in_matrix[i][j] * 13) >>> 7; // aproxima 0.1015625
+                        out_matrix[i][j] <= ((in_matrix[i][j] << 3) + (in_matrix[i][j] << 2) + in_matrix[i][j]) >>> 7; // aproxima 0.1015625
                     else
                         out_matrix[i][j] <= in_matrix[i][j];
                 end
