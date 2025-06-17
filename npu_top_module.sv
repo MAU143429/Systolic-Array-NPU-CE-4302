@@ -3,6 +3,7 @@ module npu_top_module (
     input  logic rst,
     input  logic start_button,
     output logic processing_done,
+	 output logic clk_25,
     output logic vga_hsync,
     output logic vga_vsync,
     output logic sync_blank,
@@ -20,9 +21,11 @@ module npu_top_module (
     parameter IMG_SIZE = IMG_WIDTH * IMG_HEIGHT;
     parameter NUM_TILES_X = IMG_WIDTH / TILE_SIZE;
     parameter NUM_TILES_Y = IMG_HEIGHT / TILE_SIZE;
-    
-    // Clock signals
-    logic clk_25;
+	 
+	 // RAM Variables
+	 
+	 logic [18:0] pixel_address;
+	 logic [7:0] pixel_data;
     
     // Control signals
     logic start_processing;
@@ -68,6 +71,7 @@ module npu_top_module (
     vga vga_controller (
         .clk(clk),
         .enter(enter),
+		  .pixel_data(pixel_data),
         .vga_hsync(vga_hsync),
         .vga_vsync(vga_vsync),
         .sync_blank(sync_blank),
@@ -75,22 +79,23 @@ module npu_top_module (
         .red(red),
         .green(green),
         .blue(blue),
-        .clk_25(clk_25)
+        .clk_25(clk_25),
+		  .pixel_address(pixel_address)
     );
     
     // Instantiate RAM
     ram image_ram (
         .address_a(read_addr),
-        .address_b(vga_controller.pixel_address),  // VGA reads from address_b
+        .address_b(pixel_address),
         .clock(clk_25),
         .data_a(8'b0),
         .data_b(ram_data_in),
         .wren_a(1'b0),
         .wren_b(ram_wren),
-        .q_a(ram_data_out),
-        .q_b()  // VGA reads from q_a
+        .q_a(pixel_data),
+        .q_b()  
     );
-    
+	 
     // Instantiate NPU
     npu image_npu (
         .clk(clk_25),  // Use 25MHz clock for processing
