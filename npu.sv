@@ -13,7 +13,6 @@ module npu (
     logic systolic_done, relu_done, norm_done;
     logic signed [15:0] systolic_out[9:0][9:0];
     logic signed [15:0] relu_out[9:0][9:0];
-	 
 
     
     // Systolic Array instance
