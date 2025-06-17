@@ -14,7 +14,7 @@ class SystolicArray {
 
         void multiply(const int16_t A[N][N]) {
             for (int t = 0; t < 3*N -1; ++t) { // Total cycles to process all data
-                //cout << "Cycle t = " << t + 1 << '\n';
+                cout << "Cycle t = " << t + 1 << '\n';
 
                 // Perform systolic array computation
                 for (int i = N - 1; i >= 0; --i) {
@@ -47,12 +47,13 @@ class SystolicArray {
                             outputAccumulator[i][j] = outputAccumulator[i - 1][j];
                     }
                 }
-
+                
                 // Update the first row with the last row of peGrid sums + last row of outputAccumulator
                 for (int j = 0; j < N; ++j) {
                     if(t-j <19)
                         outputAccumulator[0][j] = peGrid[N - 1][j].sum;
                 }
+                printAccumulator();
 
             }
         }
@@ -62,7 +63,7 @@ class SystolicArray {
             int16_t normalizedA[N][N];
             int16_t minVal = outputAccumulator[0][0], maxVal = outputAccumulator[0][0];
             cout << "Mutiplied matrix A:\n";
-            //printAccumulator();
+            printAccumulator();
             // Find min and max
             for (int i = 0; i < N; ++i) {
                 for (int j = 0; j < N; ++j) {
@@ -162,7 +163,7 @@ int main(int argc, char* argv[]) {
 
     if (string(argv[1]) == "test") {
         // Use predefined matrix for testing
-        int16_t inputMatrix[N][N] = {
+        /* int16_t inputMatrix[N][N] = {
         {123,  45,  89, 200,  34,  67, 155, 210,  11,  98},
         { 76, 233,  54, 128,  99, 177,  32, 145,  66, 201},
         { 43,  87, 199,  22, 110, 255,   0,  78, 164,  33},
@@ -173,7 +174,19 @@ int main(int argc, char* argv[]) {
         { 99, 122,  45, 167,  89, 200,  11,  34, 155,  76},
         {177,  65,  32, 144,  98, 211,  87,  23, 166,  44},
         { 53, 188,  77, 199, 122,  34, 156,  89, 200,  12}
-    };
+    }; */
+    int16_t inputMatrix[N][N] = {
+    {  45, 210,  98, 123,  34,  67, 155,  89, 200,  11},
+    { 233,  54, 128,  76,  99, 177,  32, 145,  66, 201},
+    {  87, 199,  22,  43, 110, 255,   0,  78, 164,  33},
+    { 112,  65, 187,  90,  44,  23, 156,  79, 122, 211},
+    { 167,  89, 134,  55,  76,  12,  98, 200,  45,  67},
+    {  77, 143,  22, 188, 109,  34, 165,  88, 199, 111},
+    { 154,  76,  43,  20,  87, 222,  33, 145,  66, 178},
+    { 122,  45, 167,  99,  89, 200,  11,  34, 155,  76},
+    {  65,  32, 144, 177,  98, 211,  87,  23, 166,  44},
+    { 188,  77, 199,  53, 122,  34, 156,  89, 200,  12}
+};
 
         sa.resetPEs();
         sa.processMatrix(inputMatrix);
