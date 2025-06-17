@@ -7,7 +7,6 @@
 !*.vhd
 !*.v
 !*.tcl
-!*.qsys
 !*.sopcinfo
 !*.sof
 
@@ -48,12 +47,14 @@ venv.bak/
 .ruff_cache/
 cython_debug/
 .pybuilder/
+.qsys_edit/
 .ropeproject/
 .spyderproject/
 scrapy/
 docs/_build/
 node_modules/
-
+sim_output/
+verilog_libs/
 # ========== ARCHIVOS BINARIOS Y TEMPORALES ==========
 *.bak
 *.log
@@ -102,8 +103,49 @@ node_modules/
 .coverage*
 *.mo
 *.pot
+*.qsys
 
 # ========== VS CODE (IGNORA CONFIG PERSONAL) ==========
 .vscode/*
 !.vscode/settings.json
 !.vscode/launch.json
+
+# ModelSim/QuestaSim files
+*.vcd
+*.wlf
+*.wlf?
+transcript
+vsim.wlf
+modelsim.ini
+*.bak
+*.log
+*.mpf
+*.mti
+*.ucdb
+*.sdo
+*.sdo.gz
+*.vstf
+*.db
+*.qdb
+*.vwf
+*.hex
+*.rpt
+*.sft
+*.smsg
+*.tcl
+*.ini
+*.log
+*.txt
+*.qpg
+*.qdb
+*.qtl
+*.do
+*.xml
+*.ini
+.ini
+work/
+altera/
+.vsim/
+.questa_sim/
+/verilog_libs
+systolic_npu.sopcinfo
