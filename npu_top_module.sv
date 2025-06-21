@@ -141,6 +141,13 @@ module npu_top_module (
                 end
                 
                 READ_SUBMATRIX: begin
+						
+						 for (int i = 0; i < 10; i++) begin
+							 for (int j = 0; j < 10; j++) begin
+								  input_matrix[i][j] <= 0;
+							 end
+						 end
+					 
                     // Calculate address for current pixel in 400x400 image
                     rom_addr_npu <= (submatrix_y * 10 + load_row) * 400 + (submatrix_x * 10 + load_col);
                     state <= STORE_DATA;
