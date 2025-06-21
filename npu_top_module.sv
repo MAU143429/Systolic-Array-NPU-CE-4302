@@ -22,13 +22,13 @@ module npu_top_module (
 
     // ROM signals (dual-port)
     logic [17:0] rom_addr_npu;      // Puerto A: Para leer submatrices (NPU)
-    logic [17:0] pixel_address_rom;      // Puerto B: Para VGA
+    logic [17:0] pixel_address_rom; // Puerto B: Para VGA
     logic [7:0]  rom_data_npu;      // Datos para NPU
     logic [7:0]  rom_data_vga;      // Datos para VGA
 
     // RAM signals (processed image)
     logic [18:0] ram_addr_write;    // Dirección escritura
-    logic [18:0] pixel_address_ram;  // Dirección lectura (VGA)
+    logic [18:0] pixel_address_ram; // Dirección lectura (VGA)
     logic [7:0]  ram_data_write;    // Datos escritura
     logic [7:0]  ram_data_read;     // Datos lectura
     logic        ram_wren;          // Write enable
@@ -39,25 +39,20 @@ module npu_top_module (
     logic signed [15:0] input_matrix[9:0][9:0];
     logic [7:0] output_matrix[9:0][9:0];
 
-    // VGA signals
-    logic [7:0]  vga_pixel_data;    // Datos pixel para VGA
-    logic [18:0] vga_pixel_addr;    // Dirección pixel actual
-
     // Control signals
     logic [5:0] submatrix_x;        // 0-39 (400/10)
     logic [5:0] submatrix_y;        // 0-39 (400/10)
-    logic [3:0] load_row, load_col;
+    logic [3:0] load_row, load_col; // Current row/col within submatrix
     logic [3:0] write_row, write_col;
 
     // FSM states
     typedef enum {
         IDLE,
         READ_SUBMATRIX,
-		  STORE_DATA,
+        STORE_DATA,
         PROCESS_NPU,
         WRITE_RESULT,
-        READ_SUBMATRIX_WAIT,
-        WRITE_RESULT_WAIT,
+        NEXT_SUBMATRIX,
         FINISH
     } state_t;
     state_t state;
@@ -65,7 +60,7 @@ module npu_top_module (
     // Instantiate ROM (original image) - Dual port
     rom image_rom (
         .address_a(rom_addr_npu),   // Puerto A: NPU
-        .address_b(pixel_address_rom),   // Puerto B: VGA
+        .address_b(pixel_address_rom), // Puerto B: VGA
         .clock(clk_25),
         .q_a(rom_data_npu),         // Datos para NPU
         .q_b(rom_data_vga)          // Datos para VGA
@@ -146,79 +141,79 @@ module npu_top_module (
                 end
                 
                 READ_SUBMATRIX: begin
-                    // Read from ROM port A (for NPU processing)
-						  rom_addr_npu <= (submatrix_y * 10 + load_row) * 400 + (submatrix_x * 10) + load_col;
-                    state <= READ_SUBMATRIX_WAIT;
+                    // Calculate address for current pixel in 400x400 image
+                    rom_addr_npu <= (submatrix_y * 10 + load_row) * 400 + (submatrix_x * 10 + load_col);
+                    state <= STORE_DATA;
                 end
                 
-                READ_SUBMATRIX_WAIT: begin
-							 // Espera 1 ciclo para la latencia de la ROM
-							 state <= STORE_DATA;
-						end
-
-					  STORE_DATA: begin
-							 input_matrix[load_row][load_col] <= {8'h00, rom_data_npu};
-							 
-							 if (load_col == 9) begin
-								  load_col <= 0;
-								  if (load_row == 9) begin
-										load_row <= 0;
-										state <= PROCESS_NPU;
-										npu_start <= 1;  // Inicia NPU
-								  end else begin
-										load_row <= load_row + 1;
-										state <= READ_SUBMATRIX;
-								  end	
-							 end else begin
-								  load_col <= load_col + 1;
-								  state <= READ_SUBMATRIX;
-							 end
-						end
-
+                STORE_DATA: begin
+                    // Store pixel data in input matrix (convert to 16-bit signed)
+                    input_matrix[load_row][load_col] <= {8'h00, rom_data_npu};
+                    
+                    // Move to next pixel in submatrix
+                    if (load_col == 9) begin
+                        load_col <= 0;
+                        if (load_row == 9) begin
+                            // Entire submatrix loaded
+                            load_row <= 0;
+                            state <= PROCESS_NPU;
+                            npu_start <= 1;  // Start NPU processing
+                        end else begin
+                            load_row <= load_row + 1;
+                            state <= READ_SUBMATRIX;
+                        end
+                    end else begin
+                        load_col <= load_col + 1;
+                        state <= READ_SUBMATRIX;
+                    end
+                end
                 
                 PROCESS_NPU: begin
-                    npu_start <= 0;
+                    npu_start <= 0;  // Clear start signal after one cycle
                     if (npu_done) begin
-                        state <= WRITE_RESULT;
+                        // Processing complete, prepare to write results
                         write_row <= 0;
                         write_col <= 0;
+                        state <= WRITE_RESULT;
                     end
                 end
                 
                 WRITE_RESULT: begin
-                    // Write to RAM (processed image)
-                    ram_addr_write <= (submatrix_y * 10 + write_row) * 400 + (submatrix_x * 10) + write_col;
+                    // Calculate address in RAM for current pixel
+                    ram_addr_write <= (submatrix_y * 10 + write_row) * 400 + (submatrix_x * 10 + write_col);
                     ram_data_write <= output_matrix[write_row][write_col];
                     ram_wren <= 1;
-                    state <= WRITE_RESULT_WAIT;
-                end
-                
-                WRITE_RESULT_WAIT: begin
-                    ram_wren <= 0;
                     
+                    // Move to next pixel in submatrix
                     if (write_col == 9) begin
                         write_col <= 0;
                         if (write_row == 9) begin
+                            // Entire submatrix written
                             write_row <= 0;
-                            if (submatrix_x == 39) begin
-                                submatrix_x <= 0;
-                                if (submatrix_y == 39) begin
-                                    state <= FINISH;
-                                end else begin
-                                    submatrix_y <= submatrix_y + 1;
-                                    state <= READ_SUBMATRIX;
-                                end
-                            end else begin
-                                submatrix_x <= submatrix_x + 1;
-                                state <= READ_SUBMATRIX;
-                            end
+                            ram_wren <= 0;
+                            state <= NEXT_SUBMATRIX;
                         end else begin
                             write_row <= write_row + 1;
-                            state <= WRITE_RESULT;
                         end
                     end else begin
                         write_col <= write_col + 1;
-                        state <= WRITE_RESULT;
+                    end
+                end
+                
+                NEXT_SUBMATRIX: begin
+                    // Move to next 10x10 submatrix
+                    if (submatrix_x == 39) begin
+                        submatrix_x <= 0;
+                        if (submatrix_y == 39) begin
+                            // Entire image processed
+                            state <= FINISH;
+                        end else begin
+                            submatrix_y <= submatrix_y + 1;
+                            state <= READ_SUBMATRIX;
+                        end
+                    end else begin
+                        submatrix_x <= submatrix_x + 1;
+                        state <= READ_SUBMATRIX;
                     end
                 end
                 
