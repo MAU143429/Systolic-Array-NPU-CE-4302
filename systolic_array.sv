@@ -114,6 +114,7 @@ module systolic_array (
                             end
                         end
                     done <= 1;
+						  state <= IDLE; 
                 end
             endcase
         end
