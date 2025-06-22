@@ -39,7 +39,7 @@
 
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEMA5F31C6
-set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name TOP_LEVEL_ENTITY npu_top_module
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 22.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:53:33  MAY 18, 2025"
 set_global_assignment -name LAST_QUARTUS_VERSION "22.1std.0 Lite Edition"
@@ -140,6 +140,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE vjtag_interface.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ram_top_module.sv
 set_global_assignment -name QIP_FILE rom.qip
 set_global_assignment -name SYSTEMVERILOG_FILE top.sv
+set_global_assignment -name SYSTEMVERILOG_FILE jtag_top.sv
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
