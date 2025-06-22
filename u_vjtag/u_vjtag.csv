@@ -1,0 +1,18 @@
+# system info u_vjtag on 2025.06.22.13:18:51
+system_info:
+name,value
+DEVICE,5CSEMA5F31C6
+DEVICE_FAMILY,Cyclone V
+GENERATION_ID,1750619931
+#
+#
+# Files generated for u_vjtag on 2025.06.22.13:18:51
+files:
+filepath,kind,attributes,module,is_top
+simulation/u_vjtag.v,VERILOG,,u_vjtag,true
+simulation/submodules/sld_virtual_jtag.v,VERILOG,,sld_virtual_jtag,false
+#
+# Map from instance-path to kind of module
+instances:
+instancePath,module
+u_vjtag.virtual_jtag_0,sld_virtual_jtag
