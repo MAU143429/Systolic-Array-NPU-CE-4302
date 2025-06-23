@@ -6,6 +6,7 @@ module npu_top_module (
     input  logic        enter,        // Switch to select image source
     output logic        done,         // Processing complete
     output logic        clk_25,       // 25 MHz clock
+    output logic [9:0]  leds,         // LED indicators for current submatrix
     output logic [7:0]  red,          // VGA red output
     output logic [7:0]  green,        // VGA green output
     output logic [7:0]  blue,         // VGA blue output
@@ -20,6 +21,10 @@ module npu_top_module (
         .clk(clk),
         .clk_25(clk_25)
     );
+    
+    // Performance Counters
+    logic [13:0] memory_access_control;
+    logic [31:0] arithmetic_operation_control;
 
     // ROM signals (dual-port)
     logic [17:0] rom_addr_npu;      // Puerto A: Para leer submatrices (NPU)
@@ -45,6 +50,8 @@ module npu_top_module (
     logic [5:0] submatrix_y;        // 0-39 (400/10)
     logic [3:0] load_row, load_col; // Current row/col within submatrix
     logic [3:0] write_row, write_col;
+	 
+	 
 
     // FSM states
     typedef enum {
@@ -58,6 +65,8 @@ module npu_top_module (
         WAIT_STEP
     } state_t;
     state_t state;
+	 
+	 assign leds = state;
 
     // Debouncing signals
     logic start_db, step_db;
@@ -109,15 +118,18 @@ module npu_top_module (
 
     // Processing mode (1 = continuous, 0 = step)
     logic processing_mode;
-    logic processing_active;  // Active when processing (either continuous or step)
+    
+    // LED indicators for current submatrix
+    assign led_x = submatrix_x[4:0];
+    assign led_y = submatrix_y[4:0];
 
     // Instantiate ROM (original image) - Dual port
     rom image_rom (
-        .address_a(rom_addr_npu),   // Puerto A: NPU
+        .address_a(rom_addr_npu),      // Puerto A: NPU
         .address_b(pixel_address_rom), // Puerto B: VGA
         .clock(clk),
-        .q_a(rom_data_npu),         // Datos para NPU
-        .q_b(rom_data_vga)          // Datos para VGA
+        .q_a(rom_data_npu),           // Datos para NPU
+        .q_b(rom_data_vga)            // Datos para VGA
     );
 
     // Instantiate RAM (processed image)
@@ -126,10 +138,10 @@ module npu_top_module (
         .address_b(pixel_address_ram),
         .clock(clk),
         .data_a(ram_data_write),
-        .data_b(8'h00),             // No usamos escritura en puerto B
+        .data_b(8'h00),               // No usamos escritura en puerto B
         .wren_a(ram_wren),
         .wren_b(1'b0),
-        .q_a(),                     // No usado
+        .q_a(),                       // No usado
         .q_b(ram_data_read)
     );
 
@@ -146,12 +158,12 @@ module npu_top_module (
     // VGA controller
     vga vga_controller (
         .clk(clk),
-        .enter(enter),              // Selects image source
+        .enter(enter),                // Selects image source
         .clk_25(clk_25),
         .pixel_address_rom(pixel_address_rom), // Address for ROM (port B)
-        .pixel_data_rom(rom_data_vga),    // Data from ROM
-        .pixel_address_ram(pixel_address_ram),// Address for RAM
-        .pixel_data_ram(ram_data_read),   // Data from RAM
+        .pixel_data_rom(rom_data_vga), // Data from ROM
+        .pixel_address_ram(pixel_address_ram), // Address for RAM
+        .pixel_data_ram(ram_data_read), // Data from RAM
         .vga_hsync(vga_hsync),
         .vga_vsync(vga_vsync),
         .sync_blank(sync_blank),
@@ -175,7 +187,8 @@ module npu_top_module (
             npu_start <= 0;
             done <= 0;
             processing_mode <= 0;
-            processing_active <= 0;
+            memory_access_control <= 0;
+            arithmetic_operation_control <= 0;
             
             // Initialize input matrix
             for (int i = 0; i < 10; i++) begin
@@ -195,7 +208,6 @@ module npu_top_module (
                         load_col <= 0;
                         done <= 0;
                         processing_mode <= 1;
-                        processing_active <= 1;
                     end else if (step_rising) begin
                         // Step mode - process first submatrix
                         state <= READ_SUBMATRIX;
@@ -205,14 +217,13 @@ module npu_top_module (
                         load_col <= 0;
                         done <= 0;
                         processing_mode <= 0;
-                        processing_active <= 1;
                     end
                 end
                 
                 READ_SUBMATRIX: begin
                     // Calculate address for current pixel in 400x400 image
                     rom_addr_npu <= (submatrix_y * 10 + load_row) * 400 + (submatrix_x * 10 + load_col);
-						  
+                    memory_access_control <= memory_access_control + 1;
                     state <= STORE_DATA;
                 end
                 
@@ -240,6 +251,7 @@ module npu_top_module (
                 
                 PROCESS_NPU: begin
                     npu_start <= 0;  // Clear start signal after one cycle
+                    arithmetic_operation_control <= arithmetic_operation_control + 2150; // Estimate max arithmetic operations 
                     if (npu_done) begin
                         // Processing complete, prepare to write results
                         write_row <= 0;
@@ -251,8 +263,9 @@ module npu_top_module (
                 WRITE_RESULT: begin
                     // Calculate address in RAM for current pixel
                     ram_addr_write <= (submatrix_y * 10 + write_row) * 400 + (submatrix_x * 10 + write_col);
-						  ram_data_write <= output_matrix[write_row][write_col];
+                    ram_data_write <= output_matrix[write_row][write_col];
                     ram_wren <= 1;
+                    memory_access_control <= memory_access_control + 1;
                     
                     // Move to next pixel in submatrix
                     if (write_col == 9) begin
@@ -283,8 +296,7 @@ module npu_top_module (
                                 // Continuous mode - process next submatrix
                                 state <= READ_SUBMATRIX;
                             end else begin
-                                // Step mode - stop processing
-                                processing_active <= 0;
+                                // Step mode - wait for next step
                                 state <= WAIT_STEP;
                             end
                         end
@@ -294,23 +306,21 @@ module npu_top_module (
                             // Continuous mode - process next submatrix
                             state <= READ_SUBMATRIX;
                         end else begin
-                            // Step mode - stop processing
-                            processing_active <= 0;
+                            // Step mode - wait for next step
                             state <= WAIT_STEP;
                         end
                     end
                 end
                 
                 WAIT_STEP: begin
+                    ram_wren <= 0;
                     // Wait for step button press in step mode
                     if (step_rising && !processing_mode) begin
-                        processing_active <= 1;
                         state <= READ_SUBMATRIX;
                     end
                     // Allow switching to continuous mode
                     if (start_rising) begin
                         processing_mode <= 1;
-                        processing_active <= 1;
                         state <= READ_SUBMATRIX;
                     end
                 end
@@ -318,7 +328,6 @@ module npu_top_module (
                 FINISH: begin
                     done <= 1;
                     processing_mode <= 0;
-                    processing_active <= 0;
                     state <= IDLE;
                 end
             endcase

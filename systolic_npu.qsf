@@ -107,11 +107,6 @@ set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME npu_top_module_tb -sectio
 set_global_assignment -name EDA_TEST_BENCH_NAME systolic_array_tb3 -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id systolic_array_tb3
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME systolic_array_tb3 -section_id systolic_array_tb3
-set_global_assignment -name EDA_TEST_BENCH_FILE mac_tb.sv -section_id mac_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE pe_tb.sv -section_id pe_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE leaky_relu_tb.sv -section_id leaky_relu_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE npu_top_module_tb.sv -section_id npu_top_module_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE systolic_array_tb3.sv -section_id systolic_array_tb3
 set_location_assignment PIN_AF9 -to mode_switch
 set_location_assignment PIN_AA15 -to step
 set_global_assignment -name QIP_FILE u_vjtag/synthesis/u_vjtag.qip
@@ -141,7 +136,26 @@ set_global_assignment -name SYSTEMVERILOG_FILE ram_top_module.sv
 set_global_assignment -name QIP_FILE rom.qip
 set_global_assignment -name SYSTEMVERILOG_FILE top.sv
 set_global_assignment -name SYSTEMVERILOG_FILE jtag_top.sv
+set_global_assignment -name EDA_TEST_BENCH_FILE mac_tb.sv -section_id mac_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE pe_tb.sv -section_id pe_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE leaky_relu_tb.sv -section_id leaky_relu_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE npu_top_module_tb.sv -section_id npu_top_module_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE systolic_array_tb3.sv -section_id systolic_array_tb3
+set_global_assignment -name EDA_TEST_BENCH_NAME systolic_array_tb2 -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id systolic_array_tb2
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME systolic_array_tb2 -section_id systolic_array_tb2
+set_global_assignment -name EDA_TEST_BENCH_FILE systolic_array_tb2.sv -section_id systolic_array_tb2
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_location_assignment PIN_Y21 -to leds[9]
+set_location_assignment PIN_W21 -to leds[8]
+set_location_assignment PIN_W20 -to leds[7]
+set_location_assignment PIN_Y19 -to leds[6]
+set_location_assignment PIN_W19 -to leds[5]
+set_location_assignment PIN_W17 -to leds[4]
+set_location_assignment PIN_V18 -to leds[3]
+set_location_assignment PIN_V17 -to leds[2]
+set_location_assignment PIN_W16 -to leds[1]
+set_location_assignment PIN_V16 -to leds[0]
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
