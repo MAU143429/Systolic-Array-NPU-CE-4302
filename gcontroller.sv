@@ -23,7 +23,10 @@ module gcontroller(
 
 	
 	// Señales de sincronización adicionales
-	assign sync_b = vga_hsync & vga_vsync;
-	assign sync_blank = ~((hs < 10'd640) & (vs < 10'd480));
+	//assign sync_b = vga_hsync & vga_vsync;
+	//assign sync_blank = ~((hs < 10'd640) & (vs < 10'd480));
+	
+	assign sync_b = 1;
+	assign sync_blank = 0;
 
 endmodule

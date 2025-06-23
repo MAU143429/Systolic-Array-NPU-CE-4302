@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simPackage>
+ <file
+   path="simulation/submodules/sld_virtual_jtag.v"
+   type="VERILOG"
+   library="u_vjtag" />
+ <file path="simulation/systolic_npu.v" type="VERILOG" />
+ <topLevel name="systolic_npu" />
+ <deviceFamily name="cyclonev" />
+</simPackage>

@@ -1,0 +1,18 @@
+# system info systolic_npu on 2025.06.22.13:16:16
+system_info:
+name,value
+DEVICE,5CSEMA5F31C6
+DEVICE_FAMILY,Cyclone V
+GENERATION_ID,1750619776
+#
+#
+# Files generated for systolic_npu on 2025.06.22.13:16:16
+files:
+filepath,kind,attributes,module,is_top
+simulation/systolic_npu.v,VERILOG,,systolic_npu,true
+simulation/submodules/sld_virtual_jtag.v,VERILOG,,sld_virtual_jtag,false
+#
+# Map from instance-path to kind of module
+instances:
+instancePath,module
+systolic_npu.u_vjtag,sld_virtual_jtag
