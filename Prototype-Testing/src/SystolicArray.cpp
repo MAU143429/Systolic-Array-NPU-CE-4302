@@ -14,7 +14,7 @@ class SystolicArray {
 
         void multiply(const int16_t A[N][N]) {
             for (int t = 0; t < 3*N -1; ++t) { // Total cycles to process all data
-                cout << "Cycle t = " << t + 1 << '\n';
+                //cout << "Cycle t = " << t + 1 << '\n';
 
                 // Perform systolic array computation
                 for (int i = N - 1; i >= 0; --i) {
@@ -53,7 +53,7 @@ class SystolicArray {
                     if(t-j <19)
                         outputAccumulator[0][j] = peGrid[N - 1][j].sum;
                 }
-                printAccumulator();
+                //printAccumulator();
 
             }
         }
@@ -62,8 +62,8 @@ class SystolicArray {
             multiply(A);
             int16_t normalizedA[N][N];
             int16_t minVal = outputAccumulator[0][0], maxVal = outputAccumulator[0][0];
-            cout << "Mutiplied matrix A:\n";
-            printAccumulator();
+            //cout << "Mutiplied matrix A:\n";
+            //printAccumulator();
             // Find min and max
             for (int i = 0; i < N; ++i) {
                 for (int j = 0; j < N; ++j) {
@@ -146,19 +146,34 @@ int main(int argc, char* argv[]) {
     }
 
     // Initialize the systolic array
-    SystolicArray sa;
+     SystolicArray sa;
+    
+    //definite weights 
     int16_t weights[N][N] = {
-        { 1,  2,  3,  4,  5,  5,  4,  3,  2,  1 },
-        { 2,  4,  6,  8, 10, 10,  8,  6,  4,  2 },
-        { 3,  6,  9, 12, 15, 15, 12,  9,  6,  3 },
-        { 4,  8, 12, 16, 20, 20, 16, 12,  8,  4 },
-        { 5, 10, 15, 20, 25, 25, 20, 15, 10,  5 },
-        { 5, 10, 15, 20, 25, 25, 20, 15, 10,  5 },
-        { 4,  8, 12, 16, 20, 20, 16, 12,  8,  4 },
-        { 3,  6,  9, 12, 15, 15, 12,  9,  6,  3 },
-        { 2,  4,  6,  8, 10, 10,  8,  6,  4,  2 },
-        { 1,  2,  3,  4,  5,  5,  4,  3,  2,  1 }
-    };
+        { -2, -2, -2, -2, -2, -2, -2, -2, -2, -2 },
+        { -2,  0,  0,  0,  1,  1,  0,  0,  0, -2 },
+        { -2,  0,  3,  3,  5,  5,  3,  3,  0, -2 },
+        { -2,  0,  3,  8, 10, 10,  8,  3,  0, -2 },
+        { -2,  1,  5, 10, 16, 16, 10,  5,  1, -2 },
+        { -2,  1,  5, 10, 16, 16, 10,  5,  1, -2 },
+        { -2,  0,  3,  8, 10, 10,  8,  3,  0, -2 },
+        { -2,  0,  3,  3,  5,  5,  3,  3,  0, -2 },
+        { -2,  0,  0,  0,  1,  1,  0,  0,  0, -2 },
+        { -2, -2, -2, -2, -2, -2, -2, -2, -2, -2 }
+    }; 
+    /*
+    int16_t weights[N][N] = {
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 },
+        {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 },
+        {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 },
+        {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 },
+        {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 }
+    };*/
     sa.setWeights(weights); // Set the 10x10 kernel weights
 
     if (string(argv[1]) == "test") {
